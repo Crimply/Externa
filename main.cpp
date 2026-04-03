@@ -703,6 +703,7 @@ void LoadSettings() {
         }
 
         if (j.contains("backgrounds")) {
+            //todo it is broken here and will not save correctly
             auto& bgs = j["backgrounds"];
             for (size_t i = 0; i < bgs.size() && i < 4; ++i) {
                 auto& bg = bgs[i];
