@@ -28,6 +28,7 @@
 
 #include <d3d11.h>
 #include <dxgi.h>
+#include <fstream>
 
 #include "eyeframe.h"
 #include "eyezoom.h"
