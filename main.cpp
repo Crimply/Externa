@@ -15,7 +15,6 @@
 #include <commdlg.h>
 
 #include "background_data.h"
-#include "fileread.h"
 #include "imguitheming.h"
 #include "json.hpp"
 #include "resizeing.h"
@@ -728,7 +727,7 @@ void LoadSettings() {
 // ---------------------------------------------------------------------
 enum eMenuPage {
     Page_Settings,
-    Page_Toolscren,
+    Page_Resizing,
     Page_CustomCaptures,
 };
 static int currentPage = Page_Settings;
@@ -916,7 +915,7 @@ void RenderGUI(bool isAllowed) {
         ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
 
-        std::string name = "LookupTool";
+        std::string name = "Externa";
         ImGui::Begin(name.c_str(), nullptr, ImGuiWindowFlags_NoTitleBar);
         if (bg_texture) {
             ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -935,8 +934,8 @@ void RenderGUI(bool isAllowed) {
         {
             if (ImGui::Button("Settings", ImVec2(80, 30))) currentPage = Page_Settings;
             if (currentPage == Page_Settings) { ImGui::SameLine(); ImGui::Text("  <"); }
-            if (ImGui::Button("Toolscren", ImVec2(80, 30))) currentPage = Page_Toolscren;
-            if (currentPage == Page_Toolscren) { ImGui::SameLine(); ImGui::Text("  <"); }
+            if (ImGui::Button("Resizing", ImVec2(80, 30))) currentPage = Page_Resizing;
+            if (currentPage == Page_Resizing) { ImGui::SameLine(); ImGui::Text("  <"); }
             if (ImGui::Button("Custom Captures", ImVec2(80, 30))) currentPage = Page_CustomCaptures;
             if (currentPage == Page_CustomCaptures) { ImGui::SameLine(); ImGui::Text("  <"); }
             if (ImGui::Button("GoBorderless", ImVec2(80, 30))) DoNormalResize();
@@ -1072,8 +1071,8 @@ void RenderGUI(bool isAllowed) {
                     break;
                 }
 
-                case Page_Toolscren: {
-                    ImGui::Text("ToolScreen");
+                case Page_Resizing: {
+                    ImGui::Text("Resizing");
 
                     static bool resizeSuccess = false;
                     static std::string message = "";
@@ -1128,7 +1127,7 @@ void RenderGUI(bool isAllowed) {
 
                     static char newName[256] = "";
                     static int newX = 0, newY = 0, newW = 100, newH = 100;
-                    static char newWindowTitle[256] = "";
+                    static char* newWindowTitle = g_targetWindowTitle;
 
                     ImGui::InputText("Name", newName, sizeof(newName));
                     ImGui::InputInt("X", &newX);
@@ -1195,6 +1194,11 @@ void RenderGUI(bool isAllowed) {
                             ImGui::InputInt("Crop Y", &cap.cropY);
                             ImGui::InputInt("Crop Width", &cap.cropW);
                             ImGui::InputInt("Crop Height", &cap.cropH);
+
+
+
+                            ImGui::InputInt("Capture Width", &cap.width);
+                            ImGui::InputInt("Capture Height", &cap.height);
 
                             int targetSize[2] = { cap.targetWidth, cap.targetHeight };
                             if (ImGui::InputInt2("Target Size", targetSize)) {

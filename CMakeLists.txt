@@ -28,7 +28,6 @@ add_executable(Extrena WIN32
         eyeframe.cpp
         eyeframe.h
         resizeing.h
-        fileread.h
         winfind.h
         eyezoom.cpp
         eyezoom.h
