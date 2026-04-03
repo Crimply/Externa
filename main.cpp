@@ -1007,28 +1007,28 @@ void RenderGUI(bool isAllowed) {
                     CaptureSettings& s = g_captureSettings[editingMacro];
 
                     ImGui::Separator();
-                    ImGui::Text("Capture Settings for %s", macroNames[editingMacro]);
-                    ImGui::Checkbox("Enable Capture", &s.enabled);
-
-                    int targetSize[2] = { s.targetWidth, s.targetHeight };
-                    if (ImGui::InputInt2("Target Size", targetSize)) {
-                        s.targetWidth = targetSize[0];
-                        s.targetHeight = targetSize[1];
-                    }
-
-                    ImGui::SliderFloat("Rotation", &s.rotation, -180.0f, 180.0f);
-                    ImGui::Checkbox("Preserve Aspect", &s.preserveAspect);
-                    ImGui::Checkbox("Colour Key", &s.colorKeyEnabled);
-                    if (s.colorKeyEnabled) {
-                        ImGui::ColorEdit3("Key Colour", (float*)&s.colorKey);
-                        ImGui::SliderInt("Tolerance", &s.tolerance, 0, 255);
-                        ImGui::Checkbox("Color Pass Mode (keep only selected colors)", &s.colorPassMode);
-                    }
-                    ImGui::InputFloat2("Display Position", &s.displayPos.x);
-                    ImGui::InputFloat2("Display Size", &s.displaySize.x);
-                    if (s.displaySize.x == 0 && s.displaySize.y == 0) {
-                        ImGui::Text("Display size will be target size");
-                    }
+                    // ImGui::Text("Capture Settings for %s", macroNames[editingMacro]);
+                    // ImGui::Checkbox("Enable Capture", &s.enabled);
+                    //
+                    // int targetSize[2] = { s.targetWidth, s.targetHeight };
+                    // if (ImGui::InputInt2("Target Size", targetSize)) {
+                    //     s.targetWidth = targetSize[0];
+                    //     s.targetHeight = targetSize[1];
+                    // }
+                    //
+                    // ImGui::SliderFloat("Rotation", &s.rotation, -180.0f, 180.0f);
+                    // ImGui::Checkbox("Preserve Aspect", &s.preserveAspect);
+                    // ImGui::Checkbox("Colour Key", &s.colorKeyEnabled);
+                    // if (s.colorKeyEnabled) {
+                    //     ImGui::ColorEdit3("Key Colour", (float*)&s.colorKey);
+                    //     ImGui::SliderInt("Tolerance", &s.tolerance, 0, 255);
+                    //     ImGui::Checkbox("Color Pass Mode (keep only selected colors)", &s.colorPassMode);
+                    // }
+                    // ImGui::InputFloat2("Display Position", &s.displayPos.x);
+                    // ImGui::InputFloat2("Display Size", &s.displaySize.x);
+                    // if (s.displaySize.x == 0 && s.displaySize.y == 0) {
+                    //     ImGui::Text("Display size will be target size");
+                    // }
 
                     // Per‑resize backgrounds UI
                     ImGui::Separator();
