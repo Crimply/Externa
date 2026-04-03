@@ -7,10 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 
 
-add_executable(Extrena WIN32
+add_executable(Extrena #WIN32 #comment out win32 for debug
         main.cpp
         imguitheming.h
-        
         uishit.h
         json.hpp
         imgui/imgui.cpp
