@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 
 
-add_executable(Extrena #WIN32
+add_executable(Extrena WIN32
         main.cpp
         imguitheming.h
         

@@ -1429,7 +1429,7 @@ void KeyHandler() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(200));
             }
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
 
@@ -1999,6 +1999,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
         g_pSwapChain->Present(0, 0);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     g_gameInfo.isRunning = false;
