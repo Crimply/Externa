@@ -1,17 +1,16 @@
 cmake_minimum_required(VERSION 3.10)
-project(rankedStats)
+project(Extrena)
 
 set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-find_package(CURL 8.19.0 REQUIRED)
 
-# Define some handy Social SDK variables
-add_executable(rankedStats #WIN32
+
+add_executable(Extrena #WIN32
         main.cpp
         imguitheming.h
-
+        
         uishit.h
         json.hpp
         imgui/imgui.cpp
@@ -25,7 +24,6 @@ add_executable(rankedStats #WIN32
         imgui/imstb_rectpack.h
         imgui/imstb_textedit.h
         imgui/imstb_truetype.h
-        pleasework.h
         eyeframe.h
         eyeframe.cpp
         eyeframe.h
@@ -35,25 +33,22 @@ add_executable(rankedStats #WIN32
         winfind.h
         eyezoom.cpp
         eyezoom.h
-        bleh.hpp
+#        bleh.hpp
 )
 
 
-target_link_libraries(rankedStats
+target_link_libraries(Extrena
         PRIVATE
         d3d11
         d3dcompiler
         dwmapi
-
 )
 
 
-target_link_libraries(rankedStats PRIVATE CURL::libcurl)
 
-target_link_libraries(rankedStats PRIVATE gdiplus)
+target_link_libraries(Extrena PRIVATE gdiplus)
 
-target_link_libraries(rankedStats PRIVATE msimg32)
-#target_link_libraries(rankedStats PRIVATE w32api)
+target_link_libraries(Extrena PRIVATE msimg32)
 
 
 if (MINGW)

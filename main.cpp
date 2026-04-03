@@ -32,7 +32,6 @@
 
 #include "eyeframe.h"
 #include "eyezoom.h"
-#include "pleasework.h"
 
 #pragma comment(lib, "gdiplus.lib")
 #pragma comment(lib, "comdlg32.lib")
