@@ -31,7 +31,6 @@ add_executable(Extrena WIN32
         winfind.h
         eyezoom.cpp
         eyezoom.h
-        fileread.h
 )
 
 
