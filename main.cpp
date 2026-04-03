@@ -678,6 +678,7 @@ void LoadSettings() {
                 cap.targetWidth = jcap.value("targetWidth", 100);
                 cap.targetHeight = jcap.value("targetHeight", 100);
                 cap.rotation = jcap.value("rotation", 0.0f);
+
                 cap.preserveAspect = jcap.value("preserveAspect", true);
                 cap.colorKeyEnabled = jcap.value("colorKeyEnabled", false);
                 cap.colorKey = jcap.value("colorKey", (int)RGB(0,255,0));
@@ -707,6 +708,7 @@ void LoadSettings() {
             auto& bgs = j["backgrounds"];
             for (size_t i = 0; i < bgs.size() && i < 4; ++i) {
                 auto& bg = bgs[i];
+                g_backgrounds[i].freeTexture();
                 g_backgrounds[i].enabled = bg.value("enabled", false);
                 g_backgrounds[i].useImage = bg.value("useImage", false);
                 std::string path = bg.value("imagePath", "");
