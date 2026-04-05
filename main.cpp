@@ -857,7 +857,8 @@ void DrawResizeBackground() {
 }
 
 
-void RenderGUI(bool isAllowed) {
+void RenderGUI(bool isAllowed)
+{
     if (activeReszie != Rezise_Normal && g_targetHwnd && IsWindow(g_targetHwnd)) {
         RECT clientRect;
         if (GetClientRect(g_targetHwnd, &clientRect)) {
@@ -930,7 +931,7 @@ void RenderGUI(bool isAllowed) {
         ImGui::BeginChild("Content", ImVec2(0, 0), true);
         {
             switch (currentPage) {
-                case Page_Settings: {
+            case Page_Settings: {
                     ImGui::Text("Settings");
 
                     ImGui::Separator();
@@ -952,8 +953,9 @@ void RenderGUI(bool isAllowed) {
                     hotkeyButton("Normal",g_hotkeys.normalKey);
 
                     ImGui::Separator();
+
                     ImGui::Checkbox("Eye Overlay", &g_eyeOverlayEnabled);
-                        ImGui::Checkbox("Custom Overlay", &g_eyeOverlayCustom);
+                    ImGui::Checkbox("Custom Overlay", &g_eyeOverlayCustom);
 
                     ImGui::Separator();
                     ImGui::Text("Window Restrictions");
@@ -1018,9 +1020,9 @@ void RenderGUI(bool isAllowed) {
                     ImGui::Separator();
                     if (ImGui::Button("Save Settings")) SaveSettings();
                     break;
-                }
+            }
 
-                case Page_Resizing: {
+            case Page_Resizing: {
                     ImGui::Text("Resizing");
 
                     static bool resizeSuccess = false;
@@ -1066,9 +1068,9 @@ void RenderGUI(bool isAllowed) {
                         ImGui::TextColored(resizeSuccess ? ImVec4(0,1,0,1) : ImVec4(1,0,0,1), "%s", message.c_str());
                     }
                     break;
-                }
+            }
 
-                case Page_CustomCaptures: {
+            case Page_CustomCaptures: {
                     ImGui::Text("Custom Captures");
 
                     ImGui::Separator();
@@ -1236,7 +1238,7 @@ void RenderGUI(bool isAllowed) {
                         ImGui::Text("Captures saved!");
                     }
                     break;
-                }
+            }
             }
         }
         ImGui::EndChild();
@@ -1318,13 +1320,13 @@ void RenderGUI(bool isAllowed) {
                     g_draggingCaptureIndex = g_editingCustomCaptureIndex;
                     g_draggingCaptureRect = true;
                     g_lastMousePos = mousePos;
-                }
+                    }
                 else if (mousePos.x >= cap.displayPos.x && mousePos.x <= cap.displayPos.x + dispW &&
                          mousePos.y >= cap.displayPos.y && mousePos.y <= cap.displayPos.y + dispH) {
                     g_draggingCaptureIndex = g_editingCustomCaptureIndex;
                     g_draggingDisplayRect = true;
                     g_lastMousePos = mousePos;
-                }
+                         }
             }
 
             if (g_draggingCaptureIndex == g_editingCustomCaptureIndex && leftDown) {
