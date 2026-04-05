@@ -103,6 +103,44 @@ struct waterMarkInfo {
 } waterMarkInfos;
 
 
+
+bool BitmapContainsColor(Bitmap* bmp, COLORREF targetColor, int tolerance) {
+    if (!bmp) return false;
+
+    int w = bmp->GetWidth();
+    int h = bmp->GetHeight();
+    if (w <= 0 || h <= 0) return false;
+
+    BitmapData data;
+    Rect rect(0, 0, w, h);
+    if (bmp->LockBits(&rect, ImageLockModeRead, PixelFormat32bppARGB, &data) != Ok)
+        return false;
+
+    BYTE* pixels = (BYTE*)data.Scan0;
+    int stride = data.Stride;
+    BYTE tr = GetRValue(targetColor);
+    BYTE tg = GetGValue(targetColor);
+    BYTE tb = GetBValue(targetColor);
+    bool found = false;
+
+    for (int y = 0; y < h && !found; ++y) {
+        BYTE* row = pixels + y * stride;
+        for (int x = 0; x < w; ++x) {
+            BYTE* p = row + x * 4;
+            BYTE r = p[2];
+            BYTE g = p[1];
+            BYTE b = p[0];
+            if (abs(r - tr) <= tolerance && abs(g - tg) <= tolerance && abs(b - tb) <= tolerance) {
+                found = true;
+                break;
+            }
+        }
+    }
+
+    bmp->UnlockBits(&data);
+    return found;
+}
+
 struct CaptureSettings {
     bool enabled = false;
     RECT cropRect = {0, 0, 100, 100};
@@ -156,6 +194,11 @@ struct CustomCapture {
     int x = 0, y = 0, width = 800, height = 420;
     bool enabled = true;
     int visibilityModes = (1 << Rezise_Thin) | (1 << Rezise_Wide) | (1 << Rezise_Eye) | (1 << Rezise_Normal);
+
+
+    bool requireColorPresent = false;
+    COLORREF requiredColor = RGB(0, 0, 0);
+    int requiredTolerance = 30;
 
     int cropX = 0, cropY = 0, cropW = 0, cropH = 0;
     int targetWidth = 100;
@@ -563,6 +606,12 @@ void SaveSettings() {
         jcap["displaySize"] = { cap.displaySize.x, cap.displaySize.y };
         jcap["colorPassMode"] = cap.colorPassMode;
         jcap["targetWindowTitle"] = std::string(cap.targetWindowTitle);
+
+        jcap["requireColorPresent"] = cap.requireColorPresent;
+        jcap["requiredColor"] = (int)cap.requiredColor;
+        jcap["requiredTolerance"] = cap.requiredTolerance;
+
+
         customArray.push_back(jcap);
     }
     j["custom_captures"] = customArray;
@@ -694,10 +743,16 @@ void LoadSettings() {
                     cap.displaySize.x = jcap["displaySize"][0];
                     cap.displaySize.y = jcap["displaySize"][1];
                 }
+
+                cap.requireColorPresent = jcap.value("requireColorPresent", false);
+                cap.requiredColor = jcap.value("requiredColor", (int)RGB(0,0,0));
+                cap.requiredTolerance = jcap.value("requiredTolerance", 30);
+
                 cap.colorPassMode = jcap.value("colorPassMode", false);
                 std::string title = jcap.value("targetWindowTitle", "");
                 strcpy_s(cap.targetWindowTitle, title.c_str());
                 g_customCaptures.push_back(cap);
+
             }
         }
 
@@ -1170,6 +1225,23 @@ void RenderGUI(bool isAllowed)
                                 cap.targetWidth = targetSize[0];
                                 cap.targetHeight = targetSize[1];
                             }
+
+                            ImGui::Separator();
+                            ImGui::Checkbox("Require specific colour", &cap.requireColorPresent);
+                            if (cap.requireColorPresent) {
+                                float col[3] = {
+                                    GetRValue(cap.requiredColor) / 255.0f,
+                                    GetGValue(cap.requiredColor) / 255.0f,
+                                    GetBValue(cap.requiredColor) / 255.0f
+                                };
+                                if (ImGui::ColorEdit3("Required Colour", col)) {
+                                    cap.requiredColor = RGB((int)(col[0]*255), (int)(col[1]*255), (int)(col[2]*255));
+                                }
+                                ImGui::SliderInt("Tolerance", &cap.requiredTolerance, 0, 255);
+                            } // ok cool it works
+
+
+
                             ImGui::SliderFloat("Rotation", &cap.rotation, -180.0f, 180.0f);
                             ImGui::Checkbox("Preserve Aspect", &cap.preserveAspect);
                             ImGui::Checkbox("Color Key", &cap.colorKeyEnabled);
@@ -1733,7 +1805,17 @@ Bitmap* CaptureWindowOrDesktop(const CustomCapture& cap) {
 
     Bitmap* croppedBitmap = srcBitmap->Clone(cropX, cropY, cropW, cropH, PixelFormat32bppARGB);
     delete srcBitmap;
+
+    if (cap.requireColorPresent) {
+        if (!BitmapContainsColor(croppedBitmap, cap.requiredColor, cap.requiredTolerance)) {
+            delete croppedBitmap;
+            return nullptr;
+        }
+    }
+
     if (!croppedBitmap) return nullptr;
+
+
 
     int destWidth = cap.targetWidth;
     int destHeight = cap.targetHeight;
@@ -1917,6 +1999,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         if (isAllowed) {
             for (auto& cap : g_customCaptures) {
                 if (cap.enabled) {
+
                     Bitmap* bmp = CaptureWindowOrDesktop(cap);
                     UpdateCustomCaptureTexture(cap, bmp);
                     delete bmp;
