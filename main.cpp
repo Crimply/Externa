@@ -53,7 +53,7 @@ using namespace Gdiplus;
 //  add a setting so that a capture only works if there is a specific colour in the capture ie the f3 background so it doesnt capture when f3 not open (is this legal?)
 
 
-
+//todo ask mod team if this commit is legal
 enum CurrentResize {
     Rezise_Thin,
     Rezise_Wide,
