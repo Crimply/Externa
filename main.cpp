@@ -40,6 +40,18 @@ using json = nlohmann::json;
 using namespace Gdiplus;
 
 
+//todo list
+//  make compatable with more than 1080p
+//  add png overlay stuff with image path for ninjabrainbot etc
+//  split into more classes for readablity
+//  genral cleanup ig
+//  beg somone to fix it
+//  more begging
+//  fix windows boarderless being a needy bitch
+//  fix eyezoom being a pretentious bitch
+
+
+
 enum CurrentResize {
     Rezise_Thin,
     Rezise_Wide,

@@ -135,17 +135,9 @@ Bitmap* CaptureAndBlend(
 
     Bitmap* overlay = LoadOverlayImage(overlayPath);
     if (overlay) {
-        // Graphics graphics(finalBitmap);
-        // graphics.SetInterpolationMode(InterpolationModeHighQualityBilinear);
-        int offset = (targetWidth - 50 * floor(targetWidth/50.0f)) / 2.0f;
+        int offset = (targetWidth - 31 * floor(targetWidth/31.0f)) / 2.0f;
         graphics.DrawImage(overlay, -offset, 0, targetWidth + offset, targetHeight);
-        // graphics.DrawImage(overlay, 0, 0, targetWidth, targetHeight);
     }
-
-    // Bitmap* overlay = LoadOverlayImage(overlayPath);
-    // if (overlay) {
-    //     graphics.DrawImage(overlay, 0, 0, targetWidth, targetHeight);
-    // }
 
     return finalBitmap;
 }
