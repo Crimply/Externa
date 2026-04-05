@@ -953,7 +953,7 @@ void RenderGUI(bool isAllowed) {
 
                     ImGui::Separator();
                     ImGui::Checkbox("Eye Overlay", &g_eyeOverlayEnabled);
-                        ImGui::Checkbox("Eye Overlay", &g_eyeOverlayCustom);
+                        ImGui::Checkbox("Custom Overlay", &g_eyeOverlayCustom);
 
                     ImGui::Separator();
                     ImGui::Text("Window Restrictions");
