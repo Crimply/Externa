@@ -49,6 +49,7 @@ enum CurrentResize {
 static int activeReszie = Rezise_Normal;
 
 bool g_eyeOverlayEnabled = true;
+bool g_eyeOverlayCustom = false;
 RECT g_eyeRect = {0,0,0,0};
 RECT g_cutoutRect = {0,0,0,0};
 
@@ -138,7 +139,7 @@ int* g_capturingHotkeyFor = nullptr;
 struct CustomCapture {
     std::string name;
 
-    int x = 0, y = 0, width = 768, height = 432;
+    int x = 0, y = 0, width = 800, height = 420;
     bool enabled = true;
     int visibilityModes = (1 << Rezise_Thin) | (1 << Rezise_Wide) | (1 << Rezise_Eye) | (1 << Rezise_Normal);
 
@@ -251,13 +252,18 @@ bool canresize() {
 }
 
 
-void LoadEyeOverlayImage() {
+void LoadEyeOverlayImage()
+{
     if (g_eyeOverlayImage) return;
     EyeZoomConfig ezCfg;
     // ezCfg.numberStyle = "stacked";
     // ezCfg.gridColor1[0] = 0.82f; ezCfg.gridColor1[1] = 0.62f; ezCfg.gridColor1[2] = 0.88f; ezCfg.gridColor1[3] = 1.0f;
     // ezCfg.gridColor2[0] = 1.0f; ezCfg.gridColor2[1] = 1.0f; ezCfg.gridColor2[2] = 1.0f; ezCfg.gridColor2[3] = 1.0f;
-    GenerateEyeZoomOverlay(ezCfg, g_eyeOverlayCapture.width, g_eyeOverlayCapture.height, L"overlay.png");
+
+    if (!g_eyeOverlayCustom) {
+        GenerateEyeZoomOverlay(ezCfg, g_eyeOverlayCapture.width, g_eyeOverlayCapture.height, L"overlay.png");
+    }
+
     std::wstring path = L"overlay.png"; // adjust path if needed
     Gdiplus::Bitmap* temp = Gdiplus::Bitmap::FromFile(path.c_str());
     // GenerateEyeZoomOverlay(ezCfg, g_eyeOverlayCapture.width, g_eyeOverlayCapture.height, L"overlay.png");
@@ -488,6 +494,7 @@ void SaveSettings() {
     j["hotkeys"]["normal"] = g_hotkeys.normalKey;
     j["overlay"] = imguiSettings.overlay;
     j["eye_overlay"] = g_eyeOverlayEnabled;
+    j["eye_overlay_custom"] = g_eyeOverlayCustom;
     j["restrict_to_allowed_windows"] = g_restrictToAllowedWindows;
     j["allowed_windows"] = g_allowedWindows;
 
@@ -590,6 +597,7 @@ void LoadSettings() {
         }
         if (j.contains("overlay")) imguiSettings.overlay = j["overlay"];
         if (j.contains("eye_overlay")) g_eyeOverlayEnabled = j["eye_overlay"];
+        if (j.contains("eye_overlay_custom")) g_eyeOverlayCustom = j["eye_overlay_custom"];
 
         if (j.contains("restrict_to_allowed_windows")) g_restrictToAllowedWindows = j["restrict_to_allowed_windows"];
         if (j.contains("allowed_windows")) {
@@ -945,6 +953,7 @@ void RenderGUI(bool isAllowed) {
 
                     ImGui::Separator();
                     ImGui::Checkbox("Eye Overlay", &g_eyeOverlayEnabled);
+                        ImGui::Checkbox("Eye Overlay", &g_eyeOverlayCustom);
 
                     ImGui::Separator();
                     ImGui::Text("Window Restrictions");

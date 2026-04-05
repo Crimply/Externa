@@ -132,10 +132,20 @@ Bitmap* CaptureAndBlend(
     DeleteObject(captureBitmap);
 
     // 2. Load overlay image (cached) and draw it stretched over the game
+
     Bitmap* overlay = LoadOverlayImage(overlayPath);
     if (overlay) {
-        graphics.DrawImage(overlay, 0, 0, targetWidth, targetHeight);
+        // Graphics graphics(finalBitmap);
+        // graphics.SetInterpolationMode(InterpolationModeHighQualityBilinear);
+        int offset = (targetWidth - 50 * floor(targetWidth/50.0f)) / 2.0f;
+        graphics.DrawImage(overlay, -offset, 0, targetWidth + offset, targetHeight);
+        // graphics.DrawImage(overlay, 0, 0, targetWidth, targetHeight);
     }
+
+    // Bitmap* overlay = LoadOverlayImage(overlayPath);
+    // if (overlay) {
+    //     graphics.DrawImage(overlay, 0, 0, targetWidth, targetHeight);
+    // }
 
     return finalBitmap;
 }

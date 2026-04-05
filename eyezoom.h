@@ -34,6 +34,8 @@ struct EyeZoomConfig {
     // --- Source region (what to grab from the game) ---
 
     // How many pixels to capture on each side of the viewport center.
+
+
     // Total capture width = cloneWidth * 2, so 30 means 60px wide.
     // Each pixel column = 1 pixel of angular offset from the crosshair.
     // Making this bigger captures more of the screen but each cell gets smaller.
