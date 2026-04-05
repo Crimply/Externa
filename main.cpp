@@ -49,6 +49,8 @@ using namespace Gdiplus;
 //  more begging
 //  fix windows boarderless being a needy bitch
 //  fix eyezoom being a pretentious bitch
+//  make defualt settings for pichart
+//  add a setting so that a capture only works if there is a specific colour in the capture ie the f3 background so it doesnt capture when f3 not open (is this legal?)
 
 
 
