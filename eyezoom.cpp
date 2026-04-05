@@ -131,6 +131,8 @@ bool GenerateEyeZoomOverlay(const EyeZoomConfig& cfg,
     // e.g. 400px panel / 60 cells = ~6px per cell
     int cellW = (std::max)(imgW / totalCells, 1);
 
+    int leftOffset = (imgW - totalCells * cellW) / 2;
+
     int perSide = cfg.cloneWidth;
 
     // How many cells actually get labels drawn.
@@ -139,7 +141,7 @@ bool GenerateEyeZoomOverlay(const EyeZoomConfig& cfg,
 
     // Height of the colored cell band (proportional to image height).
     // This is where the pink/blue boxes and numbers go.
-    int boxH    = (std::max)(20, (int)(imgH * 0.06f));
+    int boxH    = (std::max)(20, (int)(imgH * 0.04f));
     int cy      = imgH / 2;
     int gridTop = cy - boxH / 2;
 
@@ -166,7 +168,7 @@ bool GenerateEyeZoomOverlay(const EyeZoomConfig& cfg,
 
         int num  = abs(xOff);     // distance from center (always positive)
         int bi   = xOff + perSide - (xOff > 0 ? 1 : 0);  // cell index
-        int left = bi * cellW;    // pixel position in image
+        int left = leftOffset + bi * cellW;    // pixel position in image
 
         // Pick color: amber for decade marks, otherwise alternate pink/blue
         const float* c;
@@ -230,8 +232,7 @@ bool GenerateEyeZoomOverlay(const EyeZoomConfig& cfg,
             label = std::to_wstring(num);        // full number
 
         // Draw centered in the cell's box area
-        RectF r((bi + 0.5f) * cellW - cellW / 2.0f,
-                (float)gridTop, (float)cellW, (float)boxH);
+        RectF r(leftOffset + (bi + 0.5f) * cellW - cellW / 2.0f, (float)gridTop, (float)cellW, (float)boxH);
         gfx.DrawString(label.c_str(), -1, &font, r, &fmt, &txtBrush);
     }
 

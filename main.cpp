@@ -176,22 +176,16 @@ bool g_draggingCaptureRect = false;
 bool g_draggingDisplayRect = false;
 ImVec2 g_lastMousePos;
 
-// ---------------------------------------------------------------------
-// Eye Overlay Capture (replaces EyeSeeFrame)
-// ---------------------------------------------------------------------
+
 Gdiplus::Bitmap* g_eyeOverlayImage = nullptr;      // loaded overlay.png
 CustomCapture g_eyeOverlayCapture;                 // temporary capture for eye mode
 bool g_eyeOverlayCaptureActive = false;            // true when in Eye mode with overlay
 
-// ---------------------------------------------------------------------
-// Window restriction settings
-// ---------------------------------------------------------------------
+
 bool g_restrictToAllowedWindows = false;
 std::vector<std::string> g_allowedWindows;
 
-// ---------------------------------------------------------------------
-// Per‑resize background
-// ---------------------------------------------------------------------
+
 struct ResizeBackground {
     bool enabled = false;
     bool useImage = false;
@@ -210,9 +204,7 @@ struct ResizeBackground {
 };
 ResizeBackground g_backgrounds[4];
 
-// ---------------------------------------------------------------------
-// Helper functions
-// ---------------------------------------------------------------------
+
 std::string GetKeyName(int vk) {
     switch (vk) {
         case VK_LSHIFT:   return "Left Shift";
@@ -258,15 +250,13 @@ bool canresize() {
     return true;
 }
 
-// ---------------------------------------------------------------------
-// Eye Overlay Capture (blending) – exact EyeSeeFrame logic
-// ---------------------------------------------------------------------
+
 void LoadEyeOverlayImage() {
     if (g_eyeOverlayImage) return;
     EyeZoomConfig ezCfg;
     // ezCfg.numberStyle = "stacked";
-    ezCfg.gridColor1[0] = 0.82f; ezCfg.gridColor1[1] = 0.62f; ezCfg.gridColor1[2] = 0.88f; ezCfg.gridColor1[3] = 1.0f;
-    ezCfg.gridColor2[0] = 1.0f; ezCfg.gridColor2[1] = 1.0f; ezCfg.gridColor2[2] = 1.0f; ezCfg.gridColor2[3] = 1.0f;
+    // ezCfg.gridColor1[0] = 0.82f; ezCfg.gridColor1[1] = 0.62f; ezCfg.gridColor1[2] = 0.88f; ezCfg.gridColor1[3] = 1.0f;
+    // ezCfg.gridColor2[0] = 1.0f; ezCfg.gridColor2[1] = 1.0f; ezCfg.gridColor2[2] = 1.0f; ezCfg.gridColor2[3] = 1.0f;
     GenerateEyeZoomOverlay(ezCfg, g_eyeOverlayCapture.width, g_eyeOverlayCapture.height, L"overlay.png");
     std::wstring path = L"overlay.png"; // adjust path if needed
     Gdiplus::Bitmap* temp = Gdiplus::Bitmap::FromFile(path.c_str());
@@ -347,9 +337,7 @@ void UpdateCustomCaptureTexture(CustomCapture& cap, Bitmap* bmp) {
     bmp->UnlockBits(&bmpData);
 }
 
-// ---------------------------------------------------------------------
-// Resize actions
-// ---------------------------------------------------------------------
+
 void SetOverlayOwner(HWND target) {
     if (target && IsWindow(target)) {
         SetWindowLongPtr(g_hWnd, GWLP_HWNDPARENT, (LONG_PTR)target);
@@ -391,8 +379,6 @@ void DoNormalResize() {
     SaveSettings();
 }
 
-
-
 void DoThinResize() {
     if (activeReszie == Rezise_Thin) {
         DoNormalResize();
@@ -416,11 +402,11 @@ void DoThinResize() {
 }
 
 void DoWideResize() {
-
-        if (activeReszie == Rezise_Wide) {
-        DoNormalResize();
-        return;
-    }
+        if (activeReszie == Rezise_Wide)
+        {
+            DoNormalResize();
+            return;
+        }
 
     HWND hWnd = FindWindowByPartialTitle(toWide(g_targetWindowTitle).c_str());
     if (!hWnd) return;
@@ -445,16 +431,13 @@ void DoEyeResize() {
         DoNormalResize();
         return;
     }
-
     HWND hWnd = FindWindowByPartialTitle(toWide(g_targetWindowTitle).c_str());
     if (!hWnd) return;
 
     Resizing::toggleResize(hWnd, g_resizeDims.eye_w, g_resizeDims.eye_h, true);
     activeReszie = Rezise_Eye;
     g_targetHwnd = hWnd;
-
     UpdateCutoutRect();
-
 
     // Setup eye overlay capture if enabled
     if (g_eyeOverlayEnabled) {
@@ -481,20 +464,13 @@ void DoEyeResize() {
         } else {
             g_eyeOverlayCaptureActive = false;
         }
-    } else {
-        // if (g_eyeOverlayCaptureActive) {
-        //     g_eyeOverlayCapture.freeTexture();
-        //     g_eyeOverlayCaptureActive = false;
-        // }
     }
 
     UpdateCustomCapturesVisibility();
     SaveSettings();
 }
 
-// ---------------------------------------------------------------------
-// Settings Save/Load (unchanged but keep for completeness)
-// ---------------------------------------------------------------------
+
 void SaveSettings() {
     json j;
     j["target_window_title"] = g_targetWindowTitle;
@@ -704,7 +680,6 @@ void LoadSettings() {
         }
 
         if (j.contains("backgrounds")) {
-
             auto& bgs = j["backgrounds"];
             for (size_t i = 0; i < bgs.size() && i < 4; ++i) {
                 auto& bg = bgs[i];
@@ -725,9 +700,6 @@ void LoadSettings() {
     } catch (...) {}
 }
 
-// ---------------------------------------------------------------------
-// GUI Pages
-// ---------------------------------------------------------------------
 enum eMenuPage {
     Page_Settings,
     Page_Resizing,
@@ -795,9 +767,6 @@ bool IsForegroundAllowed() {
     return false;
 }
 
-// ---------------------------------------------------------------------
-// Background drawing
-// ---------------------------------------------------------------------
 bool LoadTextureFromFile(const std::string& filename, ID3D11ShaderResourceView** outTexture, int* outWidth, int* outHeight) {
     Bitmap* bitmap = Bitmap::FromFile(std::wstring(filename.begin(), filename.end()).c_str());
     if (!bitmap || bitmap->GetLastStatus() != Ok) {
@@ -879,11 +848,8 @@ void DrawResizeBackground() {
     }
 }
 
-// ---------------------------------------------------------------------
-// Main GUI Rendering (updated with eye overlay)
-// ---------------------------------------------------------------------
+
 void RenderGUI(bool isAllowed) {
-    // Draw black rectangle over the game window (if not normal mode)
     if (activeReszie != Rezise_Normal && g_targetHwnd && IsWindow(g_targetHwnd)) {
         RECT clientRect;
         if (GetClientRect(g_targetHwnd, &clientRect)) {
@@ -1379,9 +1345,6 @@ void RenderGUI(bool isAllowed) {
     }
 }
 
-// ---------------------------------------------------------------------
-// Hotkey Thread
-// ---------------------------------------------------------------------
 bool IsForegroundAllowedForHotkeys() {
     return IsForegroundAllowed();
 }
@@ -1401,7 +1364,7 @@ void KeyHandler() {
             if (GetAsyncKeyState(g_hotkeys.thinKey) & 0x0001)   DoThinResize();
             if (GetAsyncKeyState(g_hotkeys.wideKey) & 0x0001)   DoWideResize();
             if (GetAsyncKeyState(g_hotkeys.eyeKey) & 0x0001)    DoEyeResize();
-            if (GetAsyncKeyState(g_hotkeys.normalKey) & 0x0001) DoNormalResize();
+            // if (GetAsyncKeyState(g_hotkeys.normalKey) & 0x0001) DoNormalResize();
             if (GetAsyncKeyState(VK_UP) & 0x0001) {
                 imguiSettings.togglegui = !imguiSettings.togglegui;
                 std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -1411,16 +1374,7 @@ void KeyHandler() {
     }
 }
 
-// ---------------------------------------------------------------------
-// Game Loop (placeholder)
-// ---------------------------------------------------------------------
-int GameLoop() {
-    return 0;
-}
 
-// ---------------------------------------------------------------------
-// DirectX Setup
-// ---------------------------------------------------------------------
 bool CreateDeviceD3D(HWND hWnd) {
     DXGI_SWAP_CHAIN_DESC sd = {};
     sd.BufferCount = 2;
@@ -1472,9 +1426,7 @@ void CleanupDeviceD3D() {
     if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = nullptr; }
 }
 
-// ---------------------------------------------------------------------
-// Window Procedure
-// ---------------------------------------------------------------------
+
 extern IMGUI_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -1828,9 +1780,6 @@ Bitmap* CaptureWindowOrDesktop(const CustomCapture& cap) {
 }
 
 
-// ---------------------------------------------------------------------
-// WinMain
-// ---------------------------------------------------------------------
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     GdiplusStartupInput gdiplusStartupInput;
@@ -1880,7 +1829,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     ImGui_ImplWin32_Init(g_hWnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-    std::thread gameThread(GameLoop);
     std::thread keyloop(KeyHandler);
 
     bool ret = LoadTextureFromMemory(CheatBg_png, CheatBg_png_len, &bg_texture, &bg_texture_width, &bg_texture_height);
@@ -1941,7 +1889,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             UpdateCaptureTexture(nullptr);
         }
 
-        // Custom captures (user-defined)
         if (isAllowed) {
             for (auto& cap : g_customCaptures) {
                 if (cap.enabled) {
@@ -1981,7 +1928,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
     g_gameInfo.isRunning = false;
-    if (gameThread.joinable()) gameThread.join();
     if (keyloop.joinable()) keyloop.join();
 
     SaveSettings();
