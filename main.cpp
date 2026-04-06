@@ -53,7 +53,8 @@ using namespace Gdiplus;
 //  add a setting so that a capture only works if there is a specific colour in the capture ie the f3 background so it doesnt capture when f3 not open (is this legal?)
 
 
-//todo ask mod team if this commit is legal
+//  todo ask mod team if this commit is legal
+
 enum CurrentResize {
     Rezise_Thin,
     Rezise_Wide,
@@ -1234,10 +1235,10 @@ void RenderGUI(bool isAllowed)
                                     GetGValue(cap.requiredColor) / 255.0f,
                                     GetBValue(cap.requiredColor) / 255.0f
                                 };
-                                if (ImGui::ColorEdit3("Required Colour", col)) {
+                                if (ImGui::ColorEdit3("Req Required Colour", col)) { // fixing imguyi issue
                                     cap.requiredColor = RGB((int)(col[0]*255), (int)(col[1]*255), (int)(col[2]*255));
                                 }
-                                ImGui::SliderInt("Tolerance", &cap.requiredTolerance, 0, 255);
+                                ImGui::SliderInt("Req Tolerance", &cap.requiredTolerance, 0, 255);
                             } // ok cool it works
 
 
