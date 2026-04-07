@@ -52,6 +52,10 @@ using namespace Gdiplus;
 //todo  make rezise macros more easy to setup and have clear delete keys
 //todo make left and right modifier  keys work
 
+//todo make cutoutfor text simmlar to circle cutout becos no filters :(
+
+//todo make defulat config
+
 enum CurrentResize {
     Rezise_Thin,
     Rezise_Wide,
