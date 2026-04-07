@@ -49,7 +49,7 @@ using namespace Gdiplus;
 //  fix eyezoom being a pretentious bitch
 //  make defualt settings for pichart
 
-//todo  make rebind macros more easy to setup and have clear delete keys
+//todo  make rezise macros more easy to setup and have clear delete keys
 //todo make left and right modifier  keys work
 
 enum CurrentResize {
@@ -72,7 +72,20 @@ struct HotkeyConfig {
     int wideKey = VK_F2;
     int eyeKey = VK_F3;
     int normalKey = VK_F4;
+    int deleteKey = VK_DELETE;  // Clear/delete current resize
 };
+
+// Resize macro definition for easier setup
+struct ResizeMacro {
+    const char* name;
+    int width;
+    int height;
+    bool borderless;
+    int* keyBinding;
+};
+
+// Helper to define resize macros - makes setup clearer
+#define RESIZE_MACRO(name, w, h, borderless, key_ptr) {name, w, h, borderless, key_ptr}
 
 inline std::wstring toWide(const char* str) {
     return std::wstring(str, str + strlen(str));
@@ -475,10 +488,11 @@ void SaveSettings() {
     j["resize_dims"]["eye_h"] = g_resizeDims.eye_h;
     j["resize_dims"]["normal_w"] = g_resizeDims.normal_w;
     j["resize_dims"]["normal_h"] = g_resizeDims.normal_h;
-    j["hotkeys"]["thin"] = g_hotkeys.thinKey;
-    j["hotkeys"]["wide"] = g_hotkeys.wideKey;
-    j["hotkeys"]["eye"] = g_hotkeys.eyeKey;
-    j["hotkeys"]["normal"] = g_hotkeys.normalKey;
+     j["hotkeys"]["thin"] = g_hotkeys.thinKey;
+     j["hotkeys"]["wide"] = g_hotkeys.wideKey;
+     j["hotkeys"]["eye"] = g_hotkeys.eyeKey;
+     j["hotkeys"]["normal"] = g_hotkeys.normalKey;
+     j["hotkeys"]["delete"] = g_hotkeys.deleteKey;
     j["overlay"] = imguiSettings.overlay;
     j["eye_overlay"] = g_eyeOverlayEnabled;
     j["eye_overlay_custom"] = g_eyeOverlayCustom;
@@ -565,13 +579,14 @@ void LoadSettings() {
             if (dims.contains("normal_w"))g_resizeDims.normal_w = dims["normal_w"];
             if (dims.contains("normal_h"))g_resizeDims.normal_h = dims["normal_h"];
         }
-        if (j.contains("hotkeys")) {
-            auto& hk = j["hotkeys"];
-            if (hk.contains("thin")) g_hotkeys.thinKey = hk["thin"];
-            if (hk.contains("wide")) g_hotkeys.wideKey = hk["wide"];
-            if (hk.contains("eye"))  g_hotkeys.eyeKey  = hk["eye"];
-            if (hk.contains("normal"))g_hotkeys.normalKey = hk["normal"];
-        }
+         if (j.contains("hotkeys")) {
+             auto& hk = j["hotkeys"];
+             if (hk.contains("thin")) g_hotkeys.thinKey = hk["thin"];
+             if (hk.contains("wide")) g_hotkeys.wideKey = hk["wide"];
+             if (hk.contains("eye"))  g_hotkeys.eyeKey  = hk["eye"];
+             if (hk.contains("normal"))g_hotkeys.normalKey = hk["normal"];
+             if (hk.contains("delete"))g_hotkeys.deleteKey = hk["delete"];
+         }
         if (j.contains("overlay")) imguiSettings.overlay = j["overlay"];
         if (j.contains("eye_overlay")) g_eyeOverlayEnabled = j["eye_overlay"];
         if (j.contains("eye_overlay_custom")) g_eyeOverlayCustom = j["eye_overlay_custom"];
@@ -903,12 +918,39 @@ void RenderGUI(bool isAllowed)
                             g_capturingHotkey = true;
                             g_capturingHotkeyFor = &key;
                         }
+                        ImGui::SameLine();
+                        if (ImGui::Button(("Set##" + std::string(label)).c_str())) {
+                            g_capturingHotkey = true;
+                            g_capturingHotkeyFor = &key;
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button(("Delete##" + std::string(label)).c_str())) {
+                            key = 0;
+                        }
                     };
 
                     hotkeyButton("Thin",  g_hotkeys.thinKey);
                     hotkeyButton("Wide",  g_hotkeys.wideKey);
                     hotkeyButton("Eye",   g_hotkeys.eyeKey);
                     hotkeyButton("Normal",g_hotkeys.normalKey);
+
+                    ImGui::Separator();
+                    ImGui::Text("Delete Key");
+                    ImGui::SameLine();
+                    std::string deleteKeyLabel = GetKeyName(g_hotkeys.deleteKey);
+                    if (ImGui::Button(deleteKeyLabel.c_str())) {
+                        g_capturingHotkey = true;
+                        g_capturingHotkeyFor = &g_hotkeys.deleteKey;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Set##Delete")) {
+                        g_capturingHotkey = true;
+                        g_capturingHotkeyFor = &g_hotkeys.deleteKey;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Delete##Delete")) {
+                        g_hotkeys.deleteKey = 0;
+                    }
 
                     ImGui::Separator();
 
@@ -980,45 +1022,88 @@ void RenderGUI(bool isAllowed)
             }
 
             case Page_Resizing: {
-                    ImGui::Text("Resizing");
+                    ImGui::Text("Resizing Macros");
 
                     static bool resizeSuccess = false;
                     static std::string message = "";
 
                     ImGui::Separator();
-                    ImGui::Text("Resize a window by its title");
+                    ImGui::Text("Target Window");
+                    ImGui::InputText("Window Title", g_targetWindowTitle, sizeof(g_targetWindowTitle));
 
-                    ImGui::InputText("Win Title", g_targetWindowTitle, sizeof(g_targetWindowTitle));
+                    ImGui::Separator();
+                    ImGui::Text("Resize Macro Configuration");
+                    ImGui::BeginTable("MacroTable", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+                    ImGui::TableSetupColumn("Mode", ImGuiTableColumnFlags_WidthFixed, 100);
+                    ImGui::TableSetupColumn("Dimensions", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 120);
+                    ImGui::TableHeadersRow();
 
-                    ImGui::InputInt("Thin Width", &g_resizeDims.thin_w);
-                    ImGui::InputInt("Thin Height", &g_resizeDims.thin_h);
-                    ImGui::InputInt("Wide Width", &g_resizeDims.wide_w);
-                    ImGui::InputInt("Wide Height", &g_resizeDims.wide_h);
-                    ImGui::InputInt("Eye Width", &g_resizeDims.eye_w);
-                    ImGui::InputInt("Eye Height", &g_resizeDims.eye_h);
-                    ImGui::InputInt("Normal Width", &g_resizeDims.normal_w);
-                    ImGui::InputInt("Normal Height", &g_resizeDims.normal_h);
-
-                    if (ImGui::Button("Thin")) {
+                    // Thin Mode
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("Thin");
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::SetNextItemWidth(-1);
+                    ImGui::InputInt("##thin_w", &g_resizeDims.thin_w, 10, 50);
+                    ImGui::SetNextItemWidth(-1);
+                    ImGui::InputInt("##thin_h", &g_resizeDims.thin_h, 10, 50);
+                    ImGui::TableSetColumnIndex(2);
+                    if (ImGui::Button("Apply##thin", ImVec2(50, 0))) {
                         DoThinResize();
                         message = "Thin mode applied";
                         resizeSuccess = true;
                     }
-                    if (ImGui::Button("Wide")) {
+
+                    // Wide Mode
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("Wide");
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::SetNextItemWidth(-1);
+                    ImGui::InputInt("##wide_w", &g_resizeDims.wide_w, 10, 50);
+                    ImGui::SetNextItemWidth(-1);
+                    ImGui::InputInt("##wide_h", &g_resizeDims.wide_h, 10, 50);
+                    ImGui::TableSetColumnIndex(2);
+                    if (ImGui::Button("Apply##wide", ImVec2(50, 0))) {
                         DoWideResize();
                         message = "Wide mode applied";
                         resizeSuccess = true;
                     }
-                    if (ImGui::Button("Eye")) {
+
+                    // Eye Mode
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("Eye");
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::SetNextItemWidth(-1);
+                    ImGui::InputInt("##eye_w", &g_resizeDims.eye_w, 10, 50);
+                    ImGui::SetNextItemWidth(-1);
+                    ImGui::InputInt("##eye_h", &g_resizeDims.eye_h, 10, 50);
+                    ImGui::TableSetColumnIndex(2);
+                    if (ImGui::Button("Apply##eye", ImVec2(50, 0))) {
                         DoEyeResize();
                         message = "Eye mode applied";
                         resizeSuccess = true;
                     }
-                    if (ImGui::Button("Normal")) {
+
+                    // Normal Mode (Delete/Clear)
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("Normal");
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::SetNextItemWidth(-1);
+                    ImGui::InputInt("##normal_w", &g_resizeDims.normal_w, 10, 50);
+                    ImGui::SetNextItemWidth(-1);
+                    ImGui::InputInt("##normal_h", &g_resizeDims.normal_h, 10, 50);
+                    ImGui::TableSetColumnIndex(2);
+                    if (ImGui::Button("Clear##normal", ImVec2(50, 0))) {
                         DoNormalResize();
-                        message = "Normal mode applied";
+                        message = "Resize cleared";
                         resizeSuccess = true;
                     }
+
+                    ImGui::EndTable();
 
                     if (!message.empty()) {
                         ImGui::SameLine();
@@ -1297,20 +1382,24 @@ bool IsForegroundAllowedForHotkeys() {
 }
 
 void KeyHandler() {
-    while (g_gameInfo.isRunning) {
-        if (g_capturingHotkey && g_capturingHotkeyFor) {
-            for (int key = 1; key <= 255; ++key) {
-                if (GetAsyncKeyState(key) & 0x0001) {
-                    *g_capturingHotkeyFor = key;
-                    g_capturingHotkey = false;
-                    g_capturingHotkeyFor = nullptr;
-                    break;
-                }
-            }
-        } else if (IsForegroundAllowedForHotkeys()) {
+     while (g_gameInfo.isRunning) {
+         if (g_capturingHotkey && g_capturingHotkeyFor) {
+             for (int key = 1; key <= 255; ++key) {
+                 // Skip mouse button 1 (left click)
+                 if (key == VK_LBUTTON) continue;
+
+                 if (GetAsyncKeyState(key) & 0x0001) {
+                     *g_capturingHotkeyFor = key;
+                     g_capturingHotkey = false;
+                     g_capturingHotkeyFor = nullptr;
+                     break;
+                 }
+             }
+         } else if (IsForegroundAllowedForHotkeys()) {
             if (GetAsyncKeyState(g_hotkeys.thinKey) & 0x0001)   DoThinResize();
             if (GetAsyncKeyState(g_hotkeys.wideKey) & 0x0001)   DoWideResize();
             if (GetAsyncKeyState(g_hotkeys.eyeKey) & 0x0001)    DoEyeResize();
+            if (GetAsyncKeyState(g_hotkeys.deleteKey) & 0x0001) DoNormalResize();  // Delete/clear resize
             if (GetAsyncKeyState(VK_UP) & 0x0001) {
                 imguiSettings.togglegui = !imguiSettings.togglegui;
                 std::this_thread::sleep_for(std::chrono::milliseconds(200));
