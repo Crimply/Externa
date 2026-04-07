@@ -49,6 +49,9 @@ using namespace Gdiplus;
 //  fix eyezoom being a pretentious bitch
 //  make defualt settings for pichart
 
+//todo  make rebind macros more easy to setup and have clear delete keys
+//todo make left and right modifier  keys work
+
 enum CurrentResize {
     Rezise_Thin,
     Rezise_Wide,
