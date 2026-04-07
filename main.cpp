@@ -25,7 +25,6 @@
 #include "imgui/imgui_impl_dx11.h"
 #include "imgui/imgui_impl_win32.h"
 
-
 #include <d3d11.h>
 #include <dxgi.h>
 #include <fstream>
@@ -39,7 +38,6 @@
 using json = nlohmann::json;
 using namespace Gdiplus;
 
-
 //todo list
 //  make compatable with more than 1080p
 //  add png overlay stuff with image path for ninjabrainbot etc
@@ -50,10 +48,6 @@ using namespace Gdiplus;
 //  fix windows boarderless being a needy bitch
 //  fix eyezoom being a pretentious bitch
 //  make defualt settings for pichart
-//  add a setting so that a capture only works if there is a specific colour in the capture ie the f3 background so it doesnt capture when f3 not open (is this legal?)
-
-
-//  todo ask mod team if this commit is legal
 
 enum CurrentResize {
     Rezise_Thin,
@@ -103,45 +97,6 @@ struct waterMarkInfo {
     std::vector<std::string> stringinfo = {""};
 } waterMarkInfos;
 
-
-
-bool BitmapContainsColor(Bitmap* bmp, COLORREF targetColor, int tolerance) {
-    if (!bmp) return false;
-
-    int w = bmp->GetWidth();
-    int h = bmp->GetHeight();
-    if (w <= 0 || h <= 0) return false;
-
-    BitmapData data;
-    Rect rect(0, 0, w, h);
-    if (bmp->LockBits(&rect, ImageLockModeRead, PixelFormat32bppARGB, &data) != Ok)
-        return false;
-
-    BYTE* pixels = (BYTE*)data.Scan0;
-    int stride = data.Stride;
-    BYTE tr = GetRValue(targetColor);
-    BYTE tg = GetGValue(targetColor);
-    BYTE tb = GetBValue(targetColor);
-    bool found = false;
-
-    for (int y = 0; y < h && !found; ++y) {
-        BYTE* row = pixels + y * stride;
-        for (int x = 0; x < w; ++x) {
-            BYTE* p = row + x * 4;
-            BYTE r = p[2];
-            BYTE g = p[1];
-            BYTE b = p[0];
-            if (abs(r - tr) <= tolerance && abs(g - tg) <= tolerance && abs(b - tb) <= tolerance) {
-                found = true;
-                break;
-            }
-        }
-    }
-
-    bmp->UnlockBits(&data);
-    return found;
-}
-
 struct CaptureSettings {
     bool enabled = false;
     RECT cropRect = {0, 0, 100, 100};
@@ -149,13 +104,8 @@ struct CaptureSettings {
     int targetHeight = 100;
     float rotation = 0.0f;
     bool preserveAspect = true;
-    bool colorKeyEnabled = false;
-    COLORREF colorKey = RGB(0, 255, 0);
-    int tolerance = 30;
-    std::vector<COLORREF> multiColors;
     ImVec2 displayPos = ImVec2(0, 0);
     ImVec2 displaySize = ImVec2(0, 0);
-    bool colorPassMode = false;
 };
 
 CaptureSettings g_captureSettings[4];
@@ -188,7 +138,6 @@ struct GameInfo {
 bool g_capturingHotkey = false;
 int* g_capturingHotkeyFor = nullptr;
 
-
 struct CustomCapture {
     std::string name;
 
@@ -196,23 +145,13 @@ struct CustomCapture {
     bool enabled = true;
     int visibilityModes = (1 << Rezise_Thin) | (1 << Rezise_Wide) | (1 << Rezise_Eye) | (1 << Rezise_Normal);
 
-
-    bool requireColorPresent = false;
-    COLORREF requiredColor = RGB(0, 0, 0);
-    int requiredTolerance = 30;
-
     int cropX = 0, cropY = 0, cropW = 0, cropH = 0;
     int targetWidth = 100;
     int targetHeight = 100;
     float rotation = 0.0f;
     bool preserveAspect = true;
-    bool colorKeyEnabled = false;
-    COLORREF colorKey = RGB(0, 255, 0);
-    int tolerance = 30;
-    std::vector<COLORREF> multiColors;
     ImVec2 displayPos = ImVec2(0, 0);
     ImVec2 displaySize = ImVec2(0, 0);
-    bool colorPassMode = false;
 
     char targetWindowTitle[256] = "";
 
@@ -235,15 +174,12 @@ bool g_draggingCaptureRect = false;
 bool g_draggingDisplayRect = false;
 ImVec2 g_lastMousePos;
 
-
 Gdiplus::Bitmap* g_eyeOverlayImage = nullptr;      // loaded overlay.png
 CustomCapture g_eyeOverlayCapture;                 // temporary capture for eye mode
 bool g_eyeOverlayCaptureActive = false;            // true when in Eye mode with overlay
 
-
 bool g_restrictToAllowedWindows = false;
 std::vector<std::string> g_allowedWindows;
-
 
 struct ResizeBackground {
     bool enabled = false;
@@ -262,7 +198,6 @@ struct ResizeBackground {
     }
 };
 ResizeBackground g_backgrounds[4];
-
 
 std::string GetKeyName(int vk) {
     switch (vk) {
@@ -309,24 +244,18 @@ bool canresize() {
     return true;
 }
 
-
 void LoadEyeOverlayImage()
 {
     if (g_eyeOverlayImage) return;
     EyeZoomConfig ezCfg;
-    // ezCfg.numberStyle = "stacked";
-    // ezCfg.gridColor1[0] = 0.82f; ezCfg.gridColor1[1] = 0.62f; ezCfg.gridColor1[2] = 0.88f; ezCfg.gridColor1[3] = 1.0f;
-    // ezCfg.gridColor2[0] = 1.0f; ezCfg.gridColor2[1] = 1.0f; ezCfg.gridColor2[2] = 1.0f; ezCfg.gridColor2[3] = 1.0f;
 
     if (!g_eyeOverlayCustom) {
         GenerateEyeZoomOverlay(ezCfg, g_eyeOverlayCapture.width, g_eyeOverlayCapture.height, L"overlay.png");
     }
 
-    std::wstring path = L"overlay.png"; // adjust path if needed
+    std::wstring path = L"overlay.png";
     Gdiplus::Bitmap* temp = Gdiplus::Bitmap::FromFile(path.c_str());
-    // GenerateEyeZoomOverlay(ezCfg, g_eyeOverlayCapture.width, g_eyeOverlayCapture.height, L"overlay.png");
     if (temp && temp->GetLastStatus() == Gdiplus::Ok) {
-        // Convert to 32bpp ARGB to ensure proper stretching and alpha
         int w = temp->GetWidth();
         int h = temp->GetHeight();
         g_eyeOverlayImage = new Gdiplus::Bitmap(w, h, PixelFormat32bppARGB);
@@ -401,7 +330,6 @@ void UpdateCustomCaptureTexture(CustomCapture& cap, Bitmap* bmp) {
     bmp->UnlockBits(&bmpData);
 }
 
-
 void SetOverlayOwner(HWND target) {
     if (target && IsWindow(target)) {
         SetWindowLongPtr(g_hWnd, GWLP_HWNDPARENT, (LONG_PTR)target);
@@ -427,7 +355,6 @@ void SaveSettings();
 void DoNormalResize() {
     HWND hWnd = FindWindowByPartialTitle(toWide(g_targetWindowTitle).c_str());
     if (!hWnd) return;
-
 
     Resizing::toggleResize(hWnd, g_resizeDims.normal_w, g_resizeDims.normal_h, false);
     activeReszie = Rezise_Normal;
@@ -456,7 +383,6 @@ void DoThinResize() {
     SetOverlayOwner(g_targetHwnd);
     UpdateCutoutRect();
 
-
     if (g_eyeOverlayCaptureActive) {
         g_eyeOverlayCapture.freeTexture();
         g_eyeOverlayCaptureActive = false;
@@ -466,11 +392,11 @@ void DoThinResize() {
 }
 
 void DoWideResize() {
-        if (activeReszie == Rezise_Wide)
-        {
-            DoNormalResize();
-            return;
-        }
+    if (activeReszie == Rezise_Wide)
+    {
+        DoNormalResize();
+        return;
+    }
 
     HWND hWnd = FindWindowByPartialTitle(toWide(g_targetWindowTitle).c_str());
     if (!hWnd) return;
@@ -488,7 +414,6 @@ void DoWideResize() {
     SaveSettings();
 }
 
-
 void DoEyeResize() {
     if (activeReszie == Rezise_Eye)
     {
@@ -503,7 +428,6 @@ void DoEyeResize() {
     g_targetHwnd = hWnd;
     UpdateCutoutRect();
 
-    // Setup eye overlay capture if enabled
     if (g_eyeOverlayEnabled) {
         LoadEyeOverlayImage();
         if (g_eyeOverlayImage) {
@@ -519,7 +443,6 @@ void DoEyeResize() {
             g_eyeOverlayCapture.enabled = true;
             g_eyeOverlayCaptureActive = true;
 
-            // Position: left of game window, vertically centered
             RECT gameRect;
             GetWindowRect(hWnd, &gameRect);
             int gameCenterY = (gameRect.top + gameRect.bottom) / 2;
@@ -533,7 +456,6 @@ void DoEyeResize() {
     UpdateCustomCapturesVisibility();
     SaveSettings();
 }
-
 
 void SaveSettings() {
     json j;
@@ -568,14 +490,8 @@ void SaveSettings() {
         cap["targetHeight"] = g_captureSettings[i].targetHeight;
         cap["rotation"] = g_captureSettings[i].rotation;
         cap["preserveAspect"] = g_captureSettings[i].preserveAspect;
-        cap["colorKeyEnabled"] = g_captureSettings[i].colorKeyEnabled;
-        cap["colorKey"] = (int)g_captureSettings[i].colorKey;
-        cap["tolerance"] = g_captureSettings[i].tolerance;
-        cap["multiColors"] = json::array();
-        for (auto c : g_captureSettings[i].multiColors) cap["multiColors"].push_back((int)c);
         cap["displayPos"] = { g_captureSettings[i].displayPos.x, g_captureSettings[i].displayPos.y };
         cap["displaySize"] = { g_captureSettings[i].displaySize.x, g_captureSettings[i].displaySize.y };
-        cap["colorPassMode"] = g_captureSettings[i].colorPassMode;
         captureArray.push_back(cap);
     }
     j["capture"] = captureArray;
@@ -598,21 +514,9 @@ void SaveSettings() {
         jcap["targetHeight"] = cap.targetHeight;
         jcap["rotation"] = cap.rotation;
         jcap["preserveAspect"] = cap.preserveAspect;
-        jcap["colorKeyEnabled"] = cap.colorKeyEnabled;
-        jcap["colorKey"] = (int)cap.colorKey;
-        jcap["tolerance"] = cap.tolerance;
-        jcap["multiColors"] = json::array();
-        for (auto c : cap.multiColors) jcap["multiColors"].push_back((int)c);
         jcap["displayPos"] = { cap.displayPos.x, cap.displayPos.y };
         jcap["displaySize"] = { cap.displaySize.x, cap.displaySize.y };
-        jcap["colorPassMode"] = cap.colorPassMode;
         jcap["targetWindowTitle"] = std::string(cap.targetWindowTitle);
-
-        jcap["requireColorPresent"] = cap.requireColorPresent;
-        jcap["requiredColor"] = (int)cap.requiredColor;
-        jcap["requiredTolerance"] = cap.requiredTolerance;
-
-
         customArray.push_back(jcap);
     }
     j["custom_captures"] = customArray;
@@ -687,15 +591,6 @@ void LoadSettings() {
                 g_captureSettings[i].targetHeight = cap.value("targetHeight", 100);
                 g_captureSettings[i].rotation = cap.value("rotation", 0.0f);
                 g_captureSettings[i].preserveAspect = cap.value("preserveAspect", true);
-                g_captureSettings[i].colorKeyEnabled = cap.value("colorKeyEnabled", false);
-                g_captureSettings[i].colorKey = cap.value("colorKey", (int)RGB(0,255,0));
-                g_captureSettings[i].tolerance = cap.value("tolerance", 30);
-                if (cap.contains("multiColors")) {
-                    g_captureSettings[i].multiColors.clear();
-                    for (auto& col : cap["multiColors"]) {
-                        g_captureSettings[i].multiColors.push_back((COLORREF)col.get<int>());
-                    }
-                }
                 if (cap.contains("displayPos") && cap["displayPos"].size() >= 2) {
                     g_captureSettings[i].displayPos.x = cap["displayPos"][0];
                     g_captureSettings[i].displayPos.y = cap["displayPos"][1];
@@ -704,7 +599,6 @@ void LoadSettings() {
                     g_captureSettings[i].displaySize.x = cap["displaySize"][0];
                     g_captureSettings[i].displaySize.y = cap["displaySize"][1];
                 }
-                g_captureSettings[i].colorPassMode = cap.value("colorPassMode", false);
             }
         }
 
@@ -726,16 +620,7 @@ void LoadSettings() {
                 cap.targetWidth = jcap.value("targetWidth", 100);
                 cap.targetHeight = jcap.value("targetHeight", 100);
                 cap.rotation = jcap.value("rotation", 0.0f);
-
                 cap.preserveAspect = jcap.value("preserveAspect", true);
-                cap.colorKeyEnabled = jcap.value("colorKeyEnabled", false);
-                cap.colorKey = jcap.value("colorKey", (int)RGB(0,255,0));
-                cap.tolerance = jcap.value("tolerance", 30);
-                if (jcap.contains("multiColors")) {
-                    for (auto& col : jcap["multiColors"]) {
-                        cap.multiColors.push_back((COLORREF)col.get<int>());
-                    }
-                }
                 if (jcap.contains("displayPos") && jcap["displayPos"].size() >= 2) {
                     cap.displayPos.x = jcap["displayPos"][0];
                     cap.displayPos.y = jcap["displayPos"][1];
@@ -744,16 +629,9 @@ void LoadSettings() {
                     cap.displaySize.x = jcap["displaySize"][0];
                     cap.displaySize.y = jcap["displaySize"][1];
                 }
-
-                cap.requireColorPresent = jcap.value("requireColorPresent", false);
-                cap.requiredColor = jcap.value("requiredColor", (int)RGB(0,0,0));
-                cap.requiredTolerance = jcap.value("requiredTolerance", 30);
-
-                cap.colorPassMode = jcap.value("colorPassMode", false);
                 std::string title = jcap.value("targetWindowTitle", "");
                 strcpy_s(cap.targetWindowTitle, title.c_str());
                 g_customCaptures.push_back(cap);
-
             }
         }
 
@@ -926,7 +804,6 @@ void DrawResizeBackground() {
     }
 }
 
-
 void RenderGUI(bool isAllowed)
 {
     if (activeReszie != Rezise_Normal && g_targetHwnd && IsWindow(g_targetHwnd)) {
@@ -1049,7 +926,6 @@ void RenderGUI(bool isAllowed)
                             }
                         }
                     }
-
 
                     ImGui::Separator();
                     ImGui::Text("Resize Backgrounds");
@@ -1216,8 +1092,6 @@ void RenderGUI(bool isAllowed)
                             ImGui::InputInt("Crop Width", &cap.cropW);
                             ImGui::InputInt("Crop Height", &cap.cropH);
 
-
-
                             ImGui::InputInt("Capture Width", &cap.width);
                             ImGui::InputInt("Capture Height", &cap.height);
 
@@ -1228,53 +1102,9 @@ void RenderGUI(bool isAllowed)
                             }
 
                             ImGui::Separator();
-                            ImGui::Checkbox("Require specific colour", &cap.requireColorPresent);
-                            if (cap.requireColorPresent) {
-                                float col[3] = {
-                                    GetRValue(cap.requiredColor) / 255.0f,
-                                    GetGValue(cap.requiredColor) / 255.0f,
-                                    GetBValue(cap.requiredColor) / 255.0f
-                                };
-                                if (ImGui::ColorEdit3("Req Required Colour", col)) { // fixing imguyi issue
-                                    cap.requiredColor = RGB((int)(col[0]*255), (int)(col[1]*255), (int)(col[2]*255));
-                                }
-                                ImGui::SliderInt("Req Tolerance", &cap.requiredTolerance, 0, 255);
-                            } // ok cool it works
-
-
-
                             ImGui::SliderFloat("Rotation", &cap.rotation, -180.0f, 180.0f);
                             ImGui::Checkbox("Preserve Aspect", &cap.preserveAspect);
-                            ImGui::Checkbox("Color Key", &cap.colorKeyEnabled);
-                            if (cap.colorKeyEnabled) {
-                                ImGui::ColorEdit3("Key Colour", (float*)&cap.colorKey);
-                                ImGui::SliderInt("Tolerance", &cap.tolerance, 0, 255);
-                                ImGui::Checkbox("Color Pass Mode", &cap.colorPassMode);
 
-                                ImGui::Text("Additional Colors:");
-                                for (int j = 0; j < (int)cap.multiColors.size(); ++j) {
-                                    ImGui::PushID(j);
-                                    float col[3] = { GetRValue(cap.multiColors[j]) / 255.0f,
-                                                     GetGValue(cap.multiColors[j]) / 255.0f,
-                                                     GetBValue(cap.multiColors[j]) / 255.0f };
-                                    if (ImGui::ColorEdit3("##col", col)) {
-                                        cap.multiColors[j] = RGB((int)(col[0]*255), (int)(col[1]*255), (int)(col[2]*255));
-                                    }
-                                    ImGui::SameLine();
-                                    if (ImGui::Button("Remove")) {
-                                        cap.multiColors.erase(cap.multiColors.begin() + j);
-                                        --j;
-                                    }
-                                    ImGui::PopID();
-                                }
-
-                                static COLORREF newColor = RGB(255,0,0);
-                                if (ImGui::ColorEdit3("New Color", (float*)&newColor)) {}
-                                ImGui::SameLine();
-                                if (ImGui::Button("Add Color")) {
-                                    cap.multiColors.push_back(newColor);
-                                }
-                            }
                             ImGui::InputFloat2("Display Position", &cap.displayPos.x);
                             ImGui::InputFloat2("Display Size", &cap.displaySize.x);
                             if (cap.displaySize.x == 0 && cap.displaySize.y == 0) {
@@ -1462,7 +1292,6 @@ void KeyHandler() {
             if (GetAsyncKeyState(g_hotkeys.thinKey) & 0x0001)   DoThinResize();
             if (GetAsyncKeyState(g_hotkeys.wideKey) & 0x0001)   DoWideResize();
             if (GetAsyncKeyState(g_hotkeys.eyeKey) & 0x0001)    DoEyeResize();
-            // if (GetAsyncKeyState(g_hotkeys.normalKey) & 0x0001) DoNormalResize();
             if (GetAsyncKeyState(VK_UP) & 0x0001) {
                 imguiSettings.togglegui = !imguiSettings.togglegui;
                 std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -1471,7 +1300,6 @@ void KeyHandler() {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
-
 
 bool CreateDeviceD3D(HWND hWnd) {
     DXGI_SWAP_CHAIN_DESC sd = {};
@@ -1524,7 +1352,6 @@ void CleanupDeviceD3D() {
     if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = nullptr; }
 }
 
-
 extern IMGUI_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -1555,7 +1382,6 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
-
 
 Bitmap* CaptureTransformed(HWND targetHwnd, const CaptureSettings& settings) {
     if (!targetHwnd) return nullptr;
@@ -1615,49 +1441,6 @@ Bitmap* CaptureTransformed(HWND targetHwnd, const CaptureSettings& settings) {
     graphics.TranslateTransform(-srcWidth / 2.0f, -srcHeight / 2.0f);
     graphics.DrawImage(srcBitmap, 0, 0, srcWidth, srcHeight);
     delete srcBitmap;
-
-    if (settings.colorKeyEnabled) {
-        BitmapData bmpData;
-        Rect rect(0, 0, destWidth, destHeight);
-        if (destBitmap->LockBits(&rect, ImageLockModeRead | ImageLockModeWrite,
-                                 PixelFormat32bppARGB, &bmpData) == Ok) {
-            BYTE* pixels = (BYTE*)bmpData.Scan0;
-            int stride = bmpData.Stride;
-
-            auto within = [](BYTE a, BYTE b, int tol) -> bool {
-                return abs(a - b) <= tol;
-            };
-            auto matchesAnyKey = [&](BYTE r, BYTE g, BYTE b) -> bool {
-                int tol = settings.tolerance;
-                BYTE pkR = GetRValue(settings.colorKey), pkG = GetGValue(settings.colorKey), pkB = GetBValue(settings.colorKey);
-                if (within(r, pkR, tol) && within(g, pkG, tol) && within(b, pkB, tol))
-                    return true;
-                for (COLORREF col : settings.multiColors) {
-                    BYTE cr = GetRValue(col), cg = GetGValue(col), cb = GetBValue(col);
-                    if (within(r, cr, tol) && within(g, cg, tol) && within(b, cb, tol))
-                        return true;
-                }
-                return false;
-            };
-
-            for (int y = 0; y < destHeight; ++y) {
-                BYTE* row = pixels + y * stride;
-                for (int x = 0; x < destWidth; ++x) {
-                    BYTE* pixel = row + x * 4;
-                    BYTE r = pixel[2];
-                    BYTE g = pixel[1];
-                    BYTE b = pixel[0];
-                    bool match = matchesAnyKey(r, g, b);
-                    if (settings.colorPassMode) {
-                        if (!match) pixel[3] = 0;
-                    } else {
-                        if (match) pixel[3] = 0;
-                    }
-                }
-            }
-            destBitmap->UnlockBits(&bmpData);
-        }
-    }
 
     return destBitmap;
 }
@@ -1726,7 +1509,6 @@ void UpdateCaptureTexture(Bitmap* bmp) {
 
     bmp->UnlockBits(&bmpData);
 }
-
 
 Bitmap* CaptureWindowOrDesktop(const CustomCapture& cap) {
     HWND targetHwnd = nullptr;
@@ -1807,16 +1589,7 @@ Bitmap* CaptureWindowOrDesktop(const CustomCapture& cap) {
     Bitmap* croppedBitmap = srcBitmap->Clone(cropX, cropY, cropW, cropH, PixelFormat32bppARGB);
     delete srcBitmap;
 
-    if (cap.requireColorPresent) {
-        if (!BitmapContainsColor(croppedBitmap, cap.requiredColor, cap.requiredTolerance)) {
-            delete croppedBitmap;
-            return nullptr;
-        }
-    }
-
     if (!croppedBitmap) return nullptr;
-
-
 
     int destWidth = cap.targetWidth;
     int destHeight = cap.targetHeight;
@@ -1843,50 +1616,8 @@ Bitmap* CaptureWindowOrDesktop(const CustomCapture& cap) {
     graphics.DrawImage(croppedBitmap, 0, 0, cropW, cropH);
     delete croppedBitmap;
 
-    if (cap.colorKeyEnabled) {
-        BitmapData bmpData;
-        Rect rect(0, 0, destWidth, destHeight);
-        if (destBitmap->LockBits(&rect, ImageLockModeRead | ImageLockModeWrite,
-                                 PixelFormat32bppARGB, &bmpData) == Ok) {
-            BYTE* pixels = (BYTE*)bmpData.Scan0;
-            int stride = bmpData.Stride;
-
-            auto within = [](BYTE a, BYTE b, int tol) { return abs(a - b) <= tol; };
-            auto matchesAnyKey = [&](BYTE r, BYTE g, BYTE b) -> bool {
-                int tol = cap.tolerance;
-                BYTE pkR = GetRValue(cap.colorKey), pkG = GetGValue(cap.colorKey), pkB = GetBValue(cap.colorKey);
-                if (within(r, pkR, tol) && within(g, pkG, tol) && within(b, pkB, tol))
-                    return true;
-                for (COLORREF col : cap.multiColors) {
-                    BYTE cr = GetRValue(col), cg = GetGValue(col), cb = GetBValue(col);
-                    if (within(r, cr, tol) && within(g, cg, tol) && within(b, cb, tol))
-                        return true;
-                }
-                return false;
-            };
-
-            for (int y = 0; y < destHeight; ++y) {
-                BYTE* row = pixels + y * stride;
-                for (int x = 0; x < destWidth; ++x) {
-                    BYTE* pixel = row + x * 4;
-                    BYTE r = pixel[2];
-                    BYTE g = pixel[1];
-                    BYTE b = pixel[0];
-                    bool match = matchesAnyKey(r, g, b);
-                    if (cap.colorPassMode) {
-                        if (!match) pixel[3] = 0;
-                    } else {
-                        if (match) pixel[3] = 0;
-                    }
-                }
-            }
-            destBitmap->UnlockBits(&bmpData);
-        }
-    }
-
     return destBitmap;
 }
-
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -1947,7 +1678,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     auto lastTime = std::chrono::high_resolution_clock::now();
     int frames = 0;
 
-
     while (msg.message != WM_QUIT && g_gameInfo.isRunning) {
         if (PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
             TranslateMessage(&msg);
@@ -1980,8 +1710,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             RECT client;
             GetClientRect(g_targetHwnd, &client);
             RECT crop = EyeZoomCropRect(ezCfg, client.right, client.bottom);
-            Bitmap* bmp = CaptureAndBlend(g_targetHwnd,L"overlay.png",g_eyeOverlayCapture.width,g_eyeOverlayCapture.height,&crop);  // use whole client area, or provide a centered crop RECT if desired
-
+            Bitmap* bmp = CaptureAndBlend(g_targetHwnd, L"overlay.png", g_eyeOverlayCapture.width, g_eyeOverlayCapture.height, &crop);
             UpdateCustomCaptureTexture(g_eyeOverlayCapture, bmp);
             delete bmp;
         }
@@ -2000,7 +1729,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         if (isAllowed) {
             for (auto& cap : g_customCaptures) {
                 if (cap.enabled) {
-
                     Bitmap* bmp = CaptureWindowOrDesktop(cap);
                     UpdateCustomCaptureTexture(cap, bmp);
                     delete bmp;
