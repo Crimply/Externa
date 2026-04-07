@@ -153,6 +153,10 @@ struct CustomCapture {
     ImVec2 displayPos = ImVec2(0, 0);
     ImVec2 displaySize = ImVec2(0, 0);
 
+    bool circular = false;   // NEW: render as circle
+
+     float circleRadius = 0.0f;
+
     char targetWindowTitle[256] = "";
 
     ID3D11ShaderResourceView* texture = nullptr;
@@ -513,10 +517,12 @@ void SaveSettings() {
         jcap["targetWidth"] = cap.targetWidth;
         jcap["targetHeight"] = cap.targetHeight;
         jcap["rotation"] = cap.rotation;
-        jcap["preserveAspect"] = cap.preserveAspect;
-        jcap["displayPos"] = { cap.displayPos.x, cap.displayPos.y };
-        jcap["displaySize"] = { cap.displaySize.x, cap.displaySize.y };
-        jcap["targetWindowTitle"] = std::string(cap.targetWindowTitle);
+         jcap["preserveAspect"] = cap.preserveAspect;
+         jcap["displayPos"] = { cap.displayPos.x, cap.displayPos.y };
+         jcap["displaySize"] = { cap.displaySize.x, cap.displaySize.y };
+         jcap["circular"] = cap.circular;
+         jcap["circleRadius"] = cap.circleRadius;
+         jcap["targetWindowTitle"] = std::string(cap.targetWindowTitle);
         customArray.push_back(jcap);
     }
     j["custom_captures"] = customArray;
@@ -625,11 +631,13 @@ void LoadSettings() {
                     cap.displayPos.x = jcap["displayPos"][0];
                     cap.displayPos.y = jcap["displayPos"][1];
                 }
-                if (jcap.contains("displaySize") && jcap["displaySize"].size() >= 2) {
-                    cap.displaySize.x = jcap["displaySize"][0];
-                    cap.displaySize.y = jcap["displaySize"][1];
-                }
-                std::string title = jcap.value("targetWindowTitle", "");
+                 if (jcap.contains("displaySize") && jcap["displaySize"].size() >= 2) {
+                     cap.displaySize.x = jcap["displaySize"][0];
+                     cap.displaySize.y = jcap["displaySize"][1];
+                 }
+                 cap.circular = jcap.value("circular", false);
+                 cap.circleRadius = jcap.value("circleRadius", 1.0f);
+                 std::string title = jcap.value("targetWindowTitle", "");
                 strcpy_s(cap.targetWindowTitle, title.c_str());
                 g_customCaptures.push_back(cap);
             }
@@ -1104,6 +1112,14 @@ void RenderGUI(bool isAllowed)
                             ImGui::Separator();
                             ImGui::SliderFloat("Rotation", &cap.rotation, -180.0f, 180.0f);
                             ImGui::Checkbox("Preserve Aspect", &cap.preserveAspect);
+                            ImGui::Checkbox("Circular", &cap.circular);
+                            if (cap.circular) {
+                                ImGui::TextWrapped("Image will be masked to a circle inscribed in the target size.");
+                                ImGui::SliderFloat("Circle Radius", &cap.circleRadius, 0.1f, 1.0f);
+                                if (cap.circleRadius >= 0.99f) {
+                                    ImGui::Text("(All 4 sides touch circle)");
+                                }
+                            }
 
                             ImGui::InputFloat2("Display Position", &cap.displayPos.x);
                             ImGui::InputFloat2("Display Size", &cap.displaySize.x);
@@ -1615,6 +1631,36 @@ Bitmap* CaptureWindowOrDesktop(const CustomCapture& cap) {
     graphics.TranslateTransform(-cropW / 2.0f, -cropH / 2.0f);
     graphics.DrawImage(croppedBitmap, 0, 0, cropW, cropH);
     delete croppedBitmap;
+
+    // Apply circular mask if requested
+    if (cap.circular) {
+        int w = destWidth;
+        int h = destHeight;
+        float centerX = w / 2.0f;
+        float centerY = h / 2.0f;
+        // Use variable radius (scaled by cap.circleRadius, 1.0 = all 4 sides touch)
+        float maxRadius = std::max(w, h) / 2.0f;
+        float radius = maxRadius * cap.circleRadius;
+
+        BitmapData bmpData;
+        Rect rect(0, 0, w, h);
+        if (destBitmap->LockBits(&rect, ImageLockModeRead | ImageLockModeWrite,
+                                 PixelFormat32bppARGB, &bmpData) == Ok) {
+            BYTE* pixels = (BYTE*)bmpData.Scan0;
+            int stride = bmpData.Stride;
+            for (int y = 0; y < h; ++y) {
+                BYTE* row = pixels + y * stride;
+                for (int x = 0; x < w; ++x) {
+                    float dx = x - centerX;
+                    float dy = y - centerY;
+                    if (dx*dx + dy*dy > radius*radius) {
+                        row[x*4 + 3] = 0;  // set alpha to transparent
+                    }
+                }
+            }
+            destBitmap->UnlockBits(&bmpData);
+        }
+    }
 
     return destBitmap;
 }
