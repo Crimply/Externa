@@ -846,7 +846,7 @@ void RenderGUI(bool isAllowed)
             ImDrawList* drawList = ImGui::GetBackgroundDrawList();
             drawList->AddRectFilled(ImVec2((float)topLeft.x, (float)topLeft.y),
                                     ImVec2((float)bottomRight.x, (float)bottomRight.y),
-                                    IM_COL32(0, 0, 0, 255));
+                                    IM_COL32(0, 255, 0, 255)); // GREEN
         }
     }
 
@@ -1790,7 +1790,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         nullptr, nullptr, hInstance, nullptr);
     if (!g_hWnd) return 1;
 
-    SetLayeredWindowAttributes(g_hWnd, RGB(0,0,0), 0, LWA_COLORKEY);
+    SetLayeredWindowAttributes(g_hWnd, RGB(0,255,0), 0, LWA_COLORKEY);
     ShowWindow(g_hWnd, SW_SHOWMAXIMIZED);
     UpdateWindow(g_hWnd);
 
@@ -1897,7 +1897,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         ImGui::Render();
 
-        float clear_color[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+        float clear_color[4] = {0.0f, 1.0f, 0.0f, 0.0f};
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_pRenderTargetView, nullptr);
         g_pd3dDeviceContext->ClearRenderTargetView(g_pRenderTargetView, clear_color);
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
