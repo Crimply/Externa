@@ -55,6 +55,7 @@ using namespace Gdiplus;
 //todo make cutoutfor text simmlar to circle cutout becos no filters :(
 
 //todo make defulat config
+//todo state output support
 
 enum CurrentResize {
     Rezise_Thin,
@@ -70,6 +71,9 @@ RECT g_eyeRect = {0,0,0,0};
 RECT g_cutoutRect = {0,0,0,0};
 
 char g_targetWindowTitle[256] = "Minecraft*";
+
+char g_stateOutputLocation[256] = "";
+std::string gamestate  = "";
 
 struct HotkeyConfig {
     int thinKey = VK_F1;
@@ -244,6 +248,16 @@ std::string GetKeyName(int vk) {
     return fallback;
 }
 
+bool canResize() {
+    std::string temp;
+    if (ReadTextFile(g_stateOutputLocation,temp)) {
+        if (temp == "inworld,paused" ||  temp == "inworld,unpaused"  ||  temp == "inworld,gamescreenopen") {
+            return true;
+        }
+    }
+    return false;
+}
+
 void UpdateCutoutRect() {
     if (!g_targetHwnd || !IsWindow(g_targetHwnd)) {
         g_cutoutRect = {0,0,0,0};
@@ -262,10 +276,6 @@ void UpdateCutoutRect() {
     } else {
         g_cutoutRect = {0,0,0,0};
     }
-}
-
-bool canresize() {
-    return true;
 }
 
 void LoadEyeOverlayImage()
@@ -377,8 +387,11 @@ void UpdateCustomCapturesVisibility() {
 void SaveSettings();
 
 void DoNormalResize() {
+    if (!canResize()) return;
     HWND hWnd = FindWindowByPartialTitle(toWide(g_targetWindowTitle).c_str());
     if (!hWnd) return;
+
+
 
     Resizing::toggleResize(hWnd, g_resizeDims.normal_w, g_resizeDims.normal_h, false);
     activeReszie = Rezise_Normal;
@@ -395,10 +408,12 @@ void DoNormalResize() {
 }
 
 void DoThinResize() {
+    if (!canResize()) return;
     if (activeReszie == Rezise_Thin) {
         DoNormalResize();
         return;
     }
+
     HWND hWnd = FindWindowByPartialTitle(toWide(g_targetWindowTitle).c_str());
     if (!hWnd) return;
     Resizing::toggleResize(hWnd, g_resizeDims.thin_w, g_resizeDims.thin_h, true);
@@ -416,11 +431,13 @@ void DoThinResize() {
 }
 
 void DoWideResize() {
+    if (!canResize()) return;
     if (activeReszie == Rezise_Wide)
     {
         DoNormalResize();
         return;
     }
+
 
     HWND hWnd = FindWindowByPartialTitle(toWide(g_targetWindowTitle).c_str());
     if (!hWnd) return;
@@ -439,6 +456,7 @@ void DoWideResize() {
 }
 
 void DoEyeResize() {
+    if (!canResize()) return;
     if (activeReszie == Rezise_Eye)
     {
         DoNormalResize();
@@ -484,6 +502,8 @@ void DoEyeResize() {
 void SaveSettings() {
     json j;
     j["target_window_title"] = g_targetWindowTitle;
+    j["state_output_location"] = g_stateOutputLocation;
+
     j["resize_dims"]["thin_w"] = g_resizeDims.thin_w;
     j["resize_dims"]["thin_h"] = g_resizeDims.thin_h;
     j["resize_dims"]["wide_w"] = g_resizeDims.wide_w;
@@ -572,6 +592,8 @@ void LoadSettings() {
         file >> j;
         if (j.contains("target_window_title"))
             strcpy_s(g_targetWindowTitle, j["target_window_title"].get<std::string>().c_str());
+        if (j.contains("state_output_location"))
+            strcpy_s(g_stateOutputLocation, j["state_output_location"].get<std::string>().c_str());
         if (j.contains("resize_dims")) {
             auto& dims = j["resize_dims"];
             if (dims.contains("thin_w")) g_resizeDims.thin_w = dims["thin_w"];
@@ -911,6 +933,21 @@ void RenderGUI(bool isAllowed)
             case Page_Settings: {
                     ImGui::Text("Settings");
 
+                    ImGui::InputText("State Path", g_stateOutputLocation, sizeof(g_stateOutputLocation));
+                    ImGui::SameLine();
+                    if (ImGui::Button("Browse...")) {
+                        OPENFILENAMEA ofn = { sizeof(OPENFILENAMEA) };
+                        char szFile[260] = "";
+                        ofn.lpstrFile = szFile;
+                        ofn.nMaxFile = sizeof(szFile);
+                        ofn.lpstrFilter = "Text Files\0*.txt;*.csv;*.log;*.ini\0All Files\0*.*\0";
+                        ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+                        if (GetOpenFileNameA(&ofn)) {
+                            strncpy_s(g_stateOutputLocation, szFile, sizeof(g_stateOutputLocation) - 1);
+                            g_stateOutputLocation[sizeof(g_stateOutputLocation) - 1] = '\0';
+                        }
+                    }
+
                     ImGui::Separator();
                     ImGui::Text("Hotkeys");
 
@@ -1034,6 +1071,8 @@ void RenderGUI(bool isAllowed)
                     ImGui::Separator();
                     ImGui::Text("Target Window");
                     ImGui::InputText("Window Title", g_targetWindowTitle, sizeof(g_targetWindowTitle));
+
+
 
                     ImGui::Separator();
                     ImGui::Text("Resize Macro Configuration");

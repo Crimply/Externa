@@ -3,10 +3,7 @@
 //
 #pragma once
 #define STB_IMAGE_IMPLEMENTATION
-#ifndef ROBLOXNEW_UISHIT_H
-#define ROBLOXNEW_UISHIT_H
 
-#endif //ROBLOXNEW_UISHIT_H
 #include "./imgui/stb_image.h"
 #include <d3d11.h>
 
@@ -77,4 +74,31 @@ bool LoadTextureFromFile(const char* file_name, ID3D11ShaderResourceView** out_s
     bool ret = LoadTextureFromMemory(file_data, file_size, out_srv, out_width, out_height);
     IM_FREE(file_data);
     return ret;
+}
+
+bool ReadTextFile(const char* file_name, std::string& out_content)
+{
+    FILE* f = fopen(file_name, "rt");   // "rt" = read text mode
+    if (!f)
+        return false;
+
+    // Seek to end to get file size
+    fseek(f, 0, SEEK_END);
+    long file_size = ftell(f);
+    if (file_size < 0) {
+        fclose(f);
+        return false;
+    }
+    fseek(f, 0, SEEK_SET);
+
+    // Allocate string of appropriate size
+    out_content.resize(static_cast<size_t>(file_size));
+
+    // Read the whole file into the string's internal buffer
+    size_t bytes_read = fread(&out_content[0], 1, static_cast<size_t>(file_size), f);
+    fclose(f);
+
+    // Trim to actual bytes read (in case of premature EOF)
+    out_content.resize(bytes_read);
+    return bytes_read > 0;
 }
