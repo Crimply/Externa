@@ -76,6 +76,30 @@ bool LoadTextureFromFile(const char* file_name, ID3D11ShaderResourceView** out_s
     return ret;
 }
 
+
+namespace fs = std::filesystem;
+
+// Returns the path of the most recently modified entry in 'dirPath'
+// Throws an exception if the directory doesn't exist or is empty
+fs::path get_most_recent_file(const fs::path& dirPath) {
+    fs::path mostRecent;
+    fs::file_time_type latestTime = fs::file_time_type::min();
+
+    for (const auto& entry : fs::directory_iterator(dirPath)) {
+        auto currentTime = fs::last_write_time(entry);
+        if (currentTime > latestTime) {
+            latestTime = currentTime;
+            mostRecent = entry.path();
+        }
+    }
+
+    if (mostRecent.empty())
+        throw std::runtime_error("Directory is empty or no valid entries");
+
+    return mostRecent;
+}
+
+
 bool ReadTextFile(const char* file_name, std::string& out_content)
 {
     FILE* f = fopen(file_name, "rt");   // "rt" = read text mode
