@@ -158,6 +158,7 @@ struct CustomCapture {
 
     char targetWindowTitle[256] = "";
 
+
     ID3D11ShaderResourceView* texture = nullptr;
     int texWidth = 0, texHeight = 0;
 
