@@ -162,6 +162,10 @@ struct CustomCapture {
     ID3D11ShaderResourceView* texture = nullptr;
     int texWidth = 0, texHeight = 0;
 
+    // Runtime HWND cache,(not serialized). mutable so that a const& can refresh it. 
+    mutable HWND cachedHwnd = nullptr;
+    mutable char cachedHwndTitle[256] = {};
+
     void freeTexture() {
         if (texture) { texture->Release(); texture = nullptr; }
         texWidth = texHeight = 0;
@@ -485,7 +489,7 @@ void SaveSettings() {
         jcap["rotation"] = cap.rotation; jcap["preserveAspect"] = cap.preserveAspect;
         jcap["displayPos"] = {cap.displayPos.x, cap.displayPos.y};
         jcap["displaySize"] = {cap.displaySize.x, cap.displaySize.y};
-        jcap["circular"] = cap.circular; jcap["circleRadius"] = cap.circleRadius;
+        jcap["cicular"] = cap.circular; jcap["circleRadius"] = cap.circleRadius;
         jcap["targetWindowTitle"] = std::string(cap.targetWindowTitle);
         // Outline fields (replaced requireColorPresent)
         jcap["outlineEnabled"] = cap.outlineEnabled;
@@ -896,7 +900,9 @@ void ApplyOutlineToBitmap(Bitmap* bmp, COLORREF outlineColor) {
         return p[3];
     };
 
-    std::vector<std::pair<int,int>> edges;
+    BYTE r_out = GetRValue(outlineColor);
+    BYTE g_out = GetGValue(outlineColor);
+    BYTE b_out = GetBValue(outlineColor);
     for (int y = 0; y < h; ++y) {
         BYTE* row = pixels + y * stride;
         for (int x = 0; x < w; ++x) {
@@ -904,34 +910,36 @@ void ApplyOutlineToBitmap(Bitmap* bmp, COLORREF outlineColor) {
             if (p[3] == 0) continue;
             if (getAlpha(x-1, y) == 0 || getAlpha(x+1, y) == 0 ||
                 getAlpha(x, y-1) == 0 || getAlpha(x, y+1) == 0) {
-                edges.emplace_back(x, y);
+                p[0] = b_out;  // B
+                p[1] = g_out;  // G
+                p[2] = r_out;  // R
+                // alpha unchanged - so neighbour edge-tests later in the loop stay correct
             }
         }
     }
 
-    BYTE r_out = GetRValue(outlineColor);
-    BYTE g_out = GetGValue(outlineColor);
-    BYTE b_out = GetBValue(outlineColor);
-    for (auto [x, y] : edges) {
-        BYTE* p = pixels + y * stride + x * 4;
-        p[0] = b_out;  // B
-        p[1] = g_out;  // G
-        p[2] = r_out;  // R
-        // alpha unchanged (opaque)
-    }
-
     bmp->UnlockBits(&data);
 }
+
+static HDC      g_capScratchDC  = nullptr;
+static HBITMAP  g_capScratchBmp = nullptr;
+static int      g_capScratchW = 0, g_capScratchH = 0;
 
 // Custom capture with colour key and outline (instead of requireColor)
 Bitmap* CaptureWindowOrDesktop(const CustomCapture& cap) {
     HWND target = nullptr;
     RECT client = {0,0,0,0};
     if (cap.targetWindowTitle[0] != 0) {
-        std::wstring wtitle(cap.targetWindowTitle, cap.targetWindowTitle+strlen(cap.targetWindowTitle));
-        target = FindWindowByPartialTitle(wtitle.c_str());
-        if (target && IsWindow(target)) GetClientRect(target, &client);
-        else target = nullptr;
+      bool titleChanged = strcmp(cap.cachedHwndTitle, cap.targetWindowTitle) !=0;
+      if (cap.cachedHwnd && !titleChanged && IsWindow(cap.cachedHwnd)) { 
+         target = cap.cachedHwnd;
+      } else {
+         std::wstring wtitle(cap.targetWindowTitle, cap.targetWindowTitle+strlen(cap.targetWindowTitle));\
+         target = FindWindowByPartialTitle(wtitle.c_str());
+         cap.cachedHwnd = target;
+         strcpy_s(cap.cachedHwndTitle, cap.targetWindowTitle);
+      }
+      if (target) GetClientRect(target, &client);
     }
     if (!target) return nullptr;
     if (client.right<=client.left || client.bottom<=client.top) return nullptr;
@@ -948,14 +956,20 @@ Bitmap* CaptureWindowOrDesktop(const CustomCapture& cap) {
     int captureB = std::min<int>(clientScreen.bottom, desiredY + cap.height);
     int captureW = captureR - captureX, captureH = captureB - captureY;
     if (captureW<=0 || captureH<=0) return nullptr;
+
     HDC screenDC = GetDC(nullptr);
-    HDC memDC = CreateCompatibleDC(screenDC);
-    HBITMAP hbmp = CreateCompatibleBitmap(screenDC, captureW, captureH);
-    if (!hbmp) { ReleaseDC(nullptr,screenDC); DeleteDC(memDC); return nullptr; }
-    SelectObject(memDC, hbmp);
-    BitBlt(memDC,0,0, captureW,captureH, screenDC, captureX,captureY, SRCCOPY);
-    Bitmap* srcBitmap = Bitmap::FromHBITMAP(hbmp, nullptr);
-    DeleteObject(hbmp); DeleteDC(memDC); ReleaseDC(nullptr,screenDC);
+    if (!g_capScratchDC) g_capScratchDC = CreateCompatibleDC(screenDC);
+    if (g_capScratchW != captureW || g_capScratchH != captureH) {
+        if (g_capScratchBmp) DeleteObject(g_capScratchBmp);
+        g_capScratchBmp = CreateCompatibleBitmap(screenDC, captureW, captureH)
+        g_capScratchW = captureW; g_capScratchH = captureH;
+    }
+    if (!g_capScratchBmp) { ReleaseDC(nullptr, screenDC); return nullptr; }
+    HGDIOBJ oldObj = SelectObject(g_capScratchDC, g_capScratchBmp);
+    BitBlt(g_capScratchDC, 0,0, captureW,captureH, screenDC, captureX,captureY, SRCCOPY);
+    Bitmap* srcBitmap = Bitmap::FromHBITMAP(g_capScratchBmp, nullptr);
+    SelectObject(g_capScratchDC, oldObj);
+    ReleaseDC(nullptr, screenDC);
     if (!srcBitmap) return nullptr;
 
     int cropX = cap.cropX, cropY = cap.cropY, cropW = cap.cropW, cropH = cap.cropH;
@@ -1070,12 +1084,16 @@ void RenderGUI(bool isAllowed) {
         }
     }
 
-    // Make overlay click‑through when GUI hidden
-    SetWindowLongPtr(g_hWnd, GWL_EXSTYLE,
-        GetWindowLongPtr(g_hWnd, GWL_EXSTYLE) & ~WS_EX_TRANSPARENT);
-    if (!imguiSettings.togglegui)
-        SetWindowLongPtr(g_hWnd, GWL_EXSTYLE,
-            GetWindowLongPtr(g_hWnd, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
+    // Make overlay click‑through when GUI hidden, only touch the style when it changes.
+    static int s_lastClickThrough = -1;   // -1 = unknown, forces apply on first frame
+    int wantClickThrough = imguiSettings.togglegui ? 0 : 1;
+    if (wantClickThrough != s_lastClickThrough) {
+        LONG_PTR ex = GetWindowLongPtr(g_hWnd, GWL_EXSTYLE);
+        if (wantClickThrough) ex |=  WS_EX_TRANSPARENT;
+        else                  ex &= ~WS_EX_TRANSPARENT;
+        SetWindowLongPtr(g_hWnd, GWL_EXSTYLE, ex);
+        s_lastClickThrough = wantClickThrough;
+    }
 
     // Watermark overlay
     if (imguiSettings.overlay) {
@@ -1634,8 +1652,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_pRenderTargetView, nullptr);
         g_pd3dDeviceContext->ClearRenderTargetView(g_pRenderTargetView, clear);
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-        g_pSwapChain->Present(0,0);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        g_pSwapChain->Present(1, 0);
     }
     g_gameInfo.isRunning = false; if (keyloop.joinable()) keyloop.join();
     SaveSettings(); DoNormalResize();
