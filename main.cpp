@@ -961,7 +961,7 @@ Bitmap* CaptureWindowOrDesktop(const CustomCapture& cap) {
     if (!g_capScratchDC) g_capScratchDC = CreateCompatibleDC(screenDC);
     if (g_capScratchW != captureW || g_capScratchH != captureH) {
         if (g_capScratchBmp) DeleteObject(g_capScratchBmp);
-        g_capScratchBmp = CreateCompatibleBitmap(screenDC, captureW, captureH)
+        g_capScratchBmp = CreateCompatibleBitmap(screenDC, captureW, captureH);
         g_capScratchW = captureW; g_capScratchH = captureH;
     }
     if (!g_capScratchBmp) { ReleaseDC(nullptr, screenDC); return nullptr; }
